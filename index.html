@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -607,22 +608,16 @@ tr:hover td{background:#f8fafc}
 
 <script>
 // ============================================================
-// DATA LAYER
+// DATA LAYER — Supabase + localStorage cache
 // ============================================================
+const SUPABASE_URL = 'https://qluhuzeyxikaizxlouru.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_lRYKo3YhgC0Ys5EPTI0_bw_7mzqBaBI';
+const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
 const DB = {
   KEY: 'ldv_v2',
-  get() {
-    try {
-      const raw = localStorage.getItem(this.KEY);
-      const d = raw ? JSON.parse(raw) : this.defaults();
-      // Migrations
-      if (!d.attending) d.attending = [];
-      if (!d.crmLeads) d.crmLeads = [];
-      if (!d.aluguelLeads) d.aluguelLeads = [];
-      return d;
-    } catch { return this.defaults(); }
-  },
-  save(d) { localStorage.setItem(this.KEY, JSON.stringify(d)); },
+  _cache: null,
+
   defaults() {
     return {
       manager: { email: 'gerente@loja.com', password: '1234', name: 'Gerente' },
@@ -638,9 +633,59 @@ const DB = {
       attendances: [],
       crmLeads: [],
       aluguelLeads: [],
-      queue: [],     // sellers waiting in order
-      attending: []  // [{ sellerId, startedAt }] — sellers currently with a client
+      queue: [],
+      attending: []
     };
+  },
+
+  _migrate(d) {
+    if (!d.attending) d.attending = [];
+    if (!d.crmLeads) d.crmLeads = [];
+    if (!d.aluguelLeads) d.aluguelLeads = [];
+    return d;
+  },
+
+  get() {
+    // Return cache if available (async load keeps it fresh)
+    if (this._cache) return this._migrate(this._cache);
+    try {
+      const raw = localStorage.getItem(this.KEY);
+      const d = raw ? JSON.parse(raw) : this.defaults();
+      this._cache = d;
+      return this._migrate(d);
+    } catch { return this.defaults(); }
+  },
+
+  save(d) {
+    this._cache = d;
+    localStorage.setItem(this.KEY, JSON.stringify(d));
+    // Async upsert to Supabase (fire-and-forget with error log)
+    _sb.from('estado').upsert({ chave: this.KEY, valor: d, updated_at: new Date().toISOString() })
+      .then(({ error }) => { if (error) console.warn('Supabase save:', error.message); });
+  },
+
+  async loadFromSupabase() {
+    try {
+      const { data, error } = await _sb.from('estado').select('valor').eq('chave', this.KEY).single();
+      if (error && error.code !== 'PGRST116') { console.warn('Supabase load:', error.message); return; }
+      if (data && data.valor) {
+        this._cache = data.valor;
+        localStorage.setItem(this.KEY, JSON.stringify(data.valor));
+      }
+    } catch(e) { console.warn('Supabase load error:', e); }
+  },
+
+  subscribeRealtime(onUpdate) {
+    _sb.channel('estado-changes')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'estado', filter: `chave=eq.${this.KEY}` },
+        (payload) => {
+          if (payload.new && payload.new.valor) {
+            this._cache = payload.new.valor;
+            localStorage.setItem(this.KEY, JSON.stringify(payload.new.valor));
+            if (onUpdate) onUpdate();
+          }
+        })
+      .subscribe();
   }
 };
 
@@ -1176,11 +1221,25 @@ function showToast(msg,type='ok',duration=3200){
   setTimeout(()=>{t.style.opacity='0';t.style.transform='translateY(10px)';t.style.transition='all .3s ease';setTimeout(()=>t.remove(),320);},duration);
 }
 
-window.addEventListener('load',()=>{
+window.addEventListener('load', async ()=>{
   showView('home');
-  // Data mínima do campo de evento: hoje
   const alDate=document.getElementById('al-date');
   if(alDate) alDate.min=today();
+
+  // Carregar dados do Supabase e sincronizar em tempo real
+  await DB.loadFromSupabase();
+  // Re-render após load remoto se já estiver logado
+  const d = DB.get();
+  if (d.manager && d.sellers && d.sellers.length > 0) {
+    // Já tem dados — re-renderizar a view atual
+    try { renderQueue(); } catch(e){}
+    try { renderSellers(); } catch(e){}
+  }
+  // Assinar atualizações em tempo real (para sincronizar entre dispositivos)
+  DB.subscribeRealtime(() => {
+    try { renderQueue(); } catch(e){}
+    try { renderSellers(); } catch(e){}
+  });
 });
 </script>
 </body>
