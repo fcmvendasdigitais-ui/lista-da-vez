@@ -336,6 +336,38 @@ tr:hover td{background:#f8fafc}
         </div>
       </div>
     </div>
+    <!-- Botão de ajuste externo -->
+    <div style="padding:.75rem 1.25rem;border-top:1px solid var(--border)">
+      <button class="btn btn-out" style="width:100%;font-size:.85rem;color:var(--muted)" onclick="openAjusteModal()">✂️ Registrar ajuste externo</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL AJUSTE ===== -->
+<div id="modal-ajuste" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem" onclick="if(event.target===this)closeAjusteModal()">
+  <div style="background:#fff;border-radius:16px;padding:1.5rem;width:100%;max-width:380px;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem">
+      <div style="font-size:1rem;font-weight:700;color:var(--pri)">✂️ Ajuste Externo</div>
+      <span style="cursor:pointer;font-size:1.2rem;color:var(--muted)" onclick="closeAjusteModal()">✕</span>
+    </div>
+    <div id="ajuste-alert" class="alert al-err hidden" style="margin-bottom:.75rem"></div>
+    <div class="fg">
+      <label class="fl">Tipo de ajuste</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">
+        <button id="ajuste-btn-novo" class="btn btn-out" style="flex-direction:column;padding:.85rem .5rem;gap:.25rem;font-size:.82rem" onclick="selectTipoAjuste('novo')">
+          <span style="font-size:1.4rem">📥</span>Novo ajuste
+        </button>
+        <button id="ajuste-btn-buscar" class="btn btn-out" style="flex-direction:column;padding:.85rem .5rem;gap:.25rem;font-size:.82rem" onclick="selectTipoAjuste('buscar')">
+          <span style="font-size:1.4rem">📤</span>Buscar ajuste
+        </button>
+      </div>
+    </div>
+    <div class="fg">
+      <label class="fl">Vendedor responsável</label>
+      <select id="ajuste-seller" class="fc"></select>
+    </div>
+    <input type="hidden" id="ajuste-tipo" value="">
+    <button class="btn btn-pri btn-xl" onclick="saveAjuste()">Registrar</button>
   </div>
 </div>
 
@@ -348,6 +380,7 @@ tr:hover td{background:#f8fafc}
       <span class="nav-link" data-sec="sellers" onclick="showMgrSection('sellers')">👥 Vendedores</span>
       <span class="nav-link" data-sec="crm" onclick="showMgrSection('crm')">🎯 CRM <span id="nav-crm-badge" class="nav-badge hidden">0</span></span>
       <span class="nav-link" data-sec="aluguel" onclick="showMgrSection('aluguel')">🤵 Aluguel</span>
+      <span class="nav-link" data-sec="ajustes" onclick="showMgrSection('ajustes')">✂️ Ajustes</span>
       <span class="nav-link" data-sec="reports" onclick="showMgrSection('reports')">📋 Relatórios</span>
       <span class="nav-link" data-sec="config" onclick="showMgrSection('config')">⚙️ Config</span>
     </div>
@@ -432,6 +465,20 @@ tr:hover td{background:#f8fafc}
     <div class="tbl-wrap"><table>
       <thead><tr><th>Data Registro</th><th>Vendedor</th><th>Cliente</th><th>Data do Evento</th><th>Tipo de Terno</th><th>Observação</th></tr></thead>
       <tbody id="aluguel-tbody"></tbody>
+    </table></div>
+  </div>
+
+  <!-- AJUSTES -->
+  <div id="ms-ajustes" class="mgr-sec page hidden">
+    <div class="pg-title">Ajustes Externos <button class="btn btn-out btn-sm" onclick="exportAjustes()">📥 Exportar CSV</button></div>
+    <div class="g3" style="margin-bottom:1.25rem">
+      <div class="kpi info"><div class="kpi-lbl">Total</div><div class="kpi-val" id="aj-total">0</div></div>
+      <div class="kpi ok"><div class="kpi-lbl">Novos ajustes</div><div class="kpi-val" id="aj-novos">0</div></div>
+      <div class="kpi acc"><div class="kpi-lbl">Buscas de ajuste</div><div class="kpi-val" id="aj-buscas">0</div></div>
+    </div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Data/Hora</th><th>Tipo</th><th>Vendedor</th></tr></thead>
+      <tbody id="ajustes-tbody"></tbody>
     </table></div>
   </div>
 
@@ -640,6 +687,7 @@ const DB = {
       attendances: [],
       crmLeads: [],
       aluguelLeads: [],
+      ajustes: [],
       queue: [],
       attending: []
     };
@@ -649,6 +697,7 @@ const DB = {
     if (!d.attending) d.attending = [];
     if (!d.crmLeads) d.crmLeads = [];
     if (!d.aluguelLeads) d.aluguelLeads = [];
+    if (!d.ajustes) d.ajustes = [];
     return d;
   },
 
@@ -811,6 +860,7 @@ function showMgrSection(sec) {
   else if (sec==='sellers') renderSellers();
   else if (sec==='crm') renderCRM();
   else if (sec==='aluguel') renderAluguel();
+  else if (sec==='ajustes') renderAjustes();
   else if (sec==='reports') { initReportFilters(); renderReports(); }
   else if (sec==='config') renderConfig();
   updateCRMBadge();
@@ -1126,6 +1176,85 @@ function updateLeadStatus(id,status){const d=DB.get();const lead=(d.crmLeads||[]
 function exportCRM(){const d=DB.get();const leads=d.crmLeads||[];if(!leads.length){showToast('Nenhuma oportunidade para exportar.','err');return;}const lines=['Data;Vendedor;Cliente;Telefone;Categoria;Produto;Tamanho;Cor;Status'];leads.forEach(l=>lines.push([l.date,l.sellerName,l.name,l.phone,l.category,l.product,l.size,l.color,CRM_STATUS[l.status]].join(';')));downloadCSV(lines.join('\n'),'crm-oportunidades.csv');}
 function exportAluguel(){const d=DB.get();const leads=d.aluguelLeads||[];if(!leads.length){showToast('Nenhuma indicação de aluguel para exportar.','err');return;}const lines=['Data;Vendedor;Cliente;Telefone;Data Evento;Tipo Terno;Obs'];leads.forEach(l=>lines.push([l.date||'',l.sellerName||'',l.customerName||'',l.phone||'',l.eventDate||'',l.ternoType||'',l.obs||''].join(';')));downloadCSV(lines.join('\n'),'aluguel-indicacoes.csv');showToast('CSV de aluguel exportado!');}
 function exportSellers(){const d=DB.get();const sellers=d.sellers||[];if(!sellers.length){showToast('Nenhum vendedor para exportar.','err');return;}const today=new Date().toISOString().slice(0,10);const atts=d.attendances||[];const lines=['Nome;Atend. Total;Vendas Total;Conversão %;Atend. Hoje;Vendas Hoje'];sellers.forEach(s=>{const total=atts.filter(a=>a.sellerId===s.id&&(a.type==='sale'||a.type==='nosale'||a.type==='aluguel'));const sales=total.filter(a=>a.type==='sale');const todays=total.filter(a=>a.date===today);const todaySales=todays.filter(a=>a.type==='sale');const conv=total.length?Math.round(sales.length/total.length*100):0;lines.push([s.name,total.length,sales.length,conv+'%',todays.length,todaySales.length].join(';'));});downloadCSV(lines.join('\n'),'vendedores.csv');showToast('CSV de vendedores exportado!');}
+
+// ============================================================
+// AJUSTES EXTERNOS
+// ============================================================
+function openAjusteModal() {
+  const d = DB.get();
+  const sel = document.getElementById('ajuste-seller');
+  sel.innerHTML = d.sellers.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+  if (!d.sellers.length) sel.innerHTML = '<option value="">Nenhum vendedor cadastrado</option>';
+  document.getElementById('ajuste-tipo').value = '';
+  document.getElementById('ajuste-btn-novo').style.background = '';
+  document.getElementById('ajuste-btn-buscar').style.background = '';
+  document.getElementById('ajuste-btn-novo').style.color = '';
+  document.getElementById('ajuste-btn-buscar').style.color = '';
+  hideAlert('ajuste-alert');
+  document.getElementById('modal-ajuste').classList.remove('hidden');
+}
+function closeAjusteModal() { document.getElementById('modal-ajuste').classList.add('hidden'); }
+function selectTipoAjuste(tipo) {
+  document.getElementById('ajuste-tipo').value = tipo;
+  const btnNovo = document.getElementById('ajuste-btn-novo');
+  const btnBuscar = document.getElementById('ajuste-btn-buscar');
+  btnNovo.style.background = tipo === 'novo' ? 'var(--pri)' : '';
+  btnNovo.style.color = tipo === 'novo' ? '#fff' : '';
+  btnBuscar.style.background = tipo === 'buscar' ? 'var(--acc)' : '';
+  btnBuscar.style.color = tipo === 'buscar' ? '#fff' : '';
+}
+function saveAjuste() {
+  const tipo = document.getElementById('ajuste-tipo').value;
+  const sellerId = document.getElementById('ajuste-seller').value;
+  if (!tipo) return showAlert('ajuste-alert', 'Selecione o tipo de ajuste.');
+  if (!sellerId) return showAlert('ajuste-alert', 'Selecione o vendedor responsável.');
+  const d = DB.get();
+  const seller = d.sellers.find(s => String(s.id) === String(sellerId));
+  const now = new Date();
+  d.ajustes = d.ajustes || [];
+  d.ajustes.push({
+    id: genId(),
+    tipo,
+    sellerId,
+    sellerName: seller ? seller.name : '—',
+    timestamp: now.toISOString(),
+    date: now.toISOString().slice(0, 10)
+  });
+  DB.save(d);
+  closeAjusteModal();
+  showToast(tipo === 'novo' ? '📥 Novo ajuste registrado!' : '📤 Busca de ajuste registrada!');
+}
+function renderAjustes() {
+  const d = DB.get();
+  const ajustes = (d.ajustes || []).sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+  const novos = ajustes.filter(a => a.tipo === 'novo').length;
+  const buscas = ajustes.filter(a => a.tipo === 'buscar').length;
+  document.getElementById('aj-total').textContent = ajustes.length;
+  document.getElementById('aj-novos').textContent = novos;
+  document.getElementById('aj-buscas').textContent = buscas;
+  const tbody = document.getElementById('ajustes-tbody');
+  if (!ajustes.length) {
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:2rem;color:var(--muted)">Nenhum ajuste registrado</td></tr>';
+    return;
+  }
+  tbody.innerHTML = ajustes.map(a => `<tr>
+    <td>${fmtDt(a.timestamp)}</td>
+    <td><span class="badge ${a.tipo === 'novo' ? 'b-info' : 'b-acc'}">${a.tipo === 'novo' ? '📥 Novo ajuste' : '📤 Buscar ajuste'}</span></td>
+    <td>${a.sellerName}</td>
+  </tr>`).join('');
+}
+function exportAjustes() {
+  const d = DB.get();
+  const ajustes = d.ajustes || [];
+  if (!ajustes.length) { showToast('Nenhum ajuste para exportar.', 'err'); return; }
+  const lines = ['Data;Hora;Tipo;Vendedor'];
+  ajustes.forEach(a => {
+    const dt = new Date(a.timestamp);
+    lines.push([dt.toLocaleDateString('pt-BR'), dt.toLocaleTimeString('pt-BR'), a.tipo === 'novo' ? 'Novo ajuste' : 'Buscar ajuste', a.sellerName].join(';'));
+  });
+  downloadCSV(lines.join('\n'), 'ajustes-externos.csv');
+  showToast('CSV de ajustes exportado!');
+}
 
 // ============================================================
 // ALUGUEL
