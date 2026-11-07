@@ -22,7 +22,7 @@
   --pri:#1e3a5f;--pri2:#2d5282;--acc:#f97316;--acc2:#ea6c0a;
   --ok:#16a34a;--ok2:#dcfce7;--err:#dc2626;--err2:#fee2e2;
   --warn:#d97706;--warn2:#fef3c7;--info:#0ea5e9;--info2:#e0f2fe;
-  --bg:#f1f5f9;--card:#fff;--txt:#1e293b;--muted:#64748b;--border:#e2e8f0;
+  --bg:#f5f4f0;--card:#fff;--txt:#1e293b;--muted:#64748b;--border:#e2e8f0;
 }
 body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh}
 .hidden{display:none!important}
@@ -93,7 +93,7 @@ tr:hover td{background:#f8fafc}
 .al-err{background:var(--err2);color:var(--err);border:1px solid #fca5a5}
 .al-ok{background:var(--ok2);color:var(--ok);border:1px solid #86efac}
 /* LOGIN */
-.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);padding:1.5rem}
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#f5f4f0,#eae9e3);padding:1.5rem}
 .login-box{background:#fff;border-radius:20px;padding:2.25rem;width:100%;max-width:420px;box-shadow:0 10px 40px rgba(0,0,0,.12)}
 .login-logo{text-align:center;margin-bottom:1.75rem}
 .login-logo h1{font-size:1.9rem;font-weight:900;color:var(--pri)}.login-logo h1 span{color:var(--acc)}
@@ -222,6 +222,11 @@ tr:hover td{background:#f8fafc}
 .toast{color:#fff;padding:12px 16px;border-radius:10px;font-size:.88rem;font-weight:500;box-shadow:0 4px 18px rgba(0,0,0,.22);animation:toastIn .22s ease;pointer-events:all;line-height:1.4}
 .toast.ok{background:#16a34a}.toast.err{background:#dc2626}.toast.warn{background:#d97706}.toast.info{background:#0ea5e9}
 @keyframes toastIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+/* PASSWORD TOGGLE */
+.pw-wrap{position:relative;display:flex;align-items:center}
+.pw-wrap .fc{padding-right:2.6rem}
+.pw-eye{position:absolute;right:.7rem;background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.1rem;padding:0;line-height:1;user-select:none;flex-shrink:0}
+.pw-eye:hover{color:var(--pri)}
 </style>
 </head>
 <body>
@@ -263,17 +268,38 @@ tr:hover td{background:#f8fafc}
     <div id="ml-alert" class="alert al-err hidden"></div>
     <div id="ml-form-login">
       <div class="fg"><label class="fl">Email</label><input id="ml-email" class="fc" type="email" placeholder="gerente@loja.com"></div>
-      <div class="fg"><label class="fl">Senha</label><input id="ml-pass" class="fc" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doManagerLogin()"></div>
+      <div class="fg"><label class="fl">Senha</label><div class="pw-wrap"><input id="ml-pass" class="fc" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doManagerLogin()"><button type="button" class="pw-eye" onclick="togglePW('ml-pass')" title="Mostrar/ocultar">👁</button></div></div>
       <button class="btn btn-pri btn-xl" onclick="doManagerLogin()">Entrar</button>
-      <p style="text-align:center;margin-top:1rem;font-size:.82rem;color:var(--muted)">Primeiro acesso? <span class="lnk" onclick="showSetup()">Configure aqui</span></p>
+      <p style="text-align:center;margin-top:.75rem;font-size:.82rem;color:var(--muted)">
+        <span class="lnk" onclick="showForgotPass()">Esqueci minha senha</span>
+        &nbsp;·&nbsp;
+        Primeiro acesso? <span class="lnk" onclick="showSetup()">Configure aqui</span>
+      </p>
     </div>
+
+    <!-- ESQUECI A SENHA -->
+    <div id="ml-form-forgot" class="hidden">
+      <p style="font-size:.85rem;color:var(--muted);margin-bottom:1rem">Digite seu email e enviaremos um link para redefinir sua senha.</p>
+      <div class="fg"><label class="fl">Email</label><input id="fp-email" class="fc" type="email" placeholder="seu@email.com" onkeydown="if(event.key==='Enter')doForgotPass()"></div>
+      <button class="btn btn-acc btn-xl" onclick="doForgotPass()">Enviar link de redefinição</button>
+      <p style="text-align:center;margin-top:.85rem"><span class="lnk" onclick="showLoginForm()">← Voltar ao login</span></p>
+    </div>
+
+    <!-- NOVA SENHA (recovery + senha provisória) -->
+    <div id="ml-form-newpass" class="hidden">
+      <p style="font-size:.85rem;color:var(--muted);margin-bottom:1rem">Escolha uma nova senha para sua conta.</p>
+      <div class="fg"><label class="fl">Nova Senha</label><div class="pw-wrap"><input id="np-pass" class="fc" type="password" placeholder="Mínimo 4 caracteres"><button type="button" class="pw-eye" onclick="togglePW('np-pass')" title="Mostrar/ocultar">👁</button></div></div>
+      <div class="fg"><label class="fl">Confirmar Senha</label><div class="pw-wrap"><input id="np-conf" class="fc" type="password" placeholder="Repita a senha"><button type="button" class="pw-eye" onclick="togglePW('np-conf')" title="Mostrar/ocultar">👁</button></div></div>
+      <button class="btn btn-acc btn-xl" onclick="doChangePass()">Salvar nova senha</button>
+    </div>
+
     <div id="ml-form-setup" class="hidden">
       <p style="font-size:.85rem;color:var(--muted);margin-bottom:1rem">Configure sua conta de gerente para começar.</p>
       <div class="fg"><label class="fl">Nome da Loja</label><input id="su-store" class="fc" placeholder="Ex: Loja Center"></div>
       <div class="fg"><label class="fl">Seu Nome</label><input id="su-name" class="fc" placeholder="Ex: João Silva"></div>
       <div class="fg"><label class="fl">Email</label><input id="su-email" class="fc" type="email" placeholder="seu@email.com"></div>
-      <div class="fg"><label class="fl">Senha do Gerente</label><input id="su-pass" class="fc" type="password" placeholder="Mínimo 4 caracteres"></div>
-      <div class="fg"><label class="fl">Senha da Lista (vendedores)</label><input id="su-lpass" class="fc" placeholder="Ex: 1234"></div>
+      <div class="fg"><label class="fl">Senha do Gerente</label><div class="pw-wrap"><input id="su-pass" class="fc" type="password" placeholder="Mínimo 4 caracteres"><button type="button" class="pw-eye" onclick="togglePW('su-pass')" title="Mostrar/ocultar">👁</button></div></div>
+      <div class="fg"><label class="fl">Senha da Lista (vendedores)</label><div class="pw-wrap"><input id="su-lpass" class="fc" placeholder="Ex: 1234"><button type="button" class="pw-eye" onclick="togglePW('su-lpass')" title="Mostrar/ocultar">👁</button></div></div>
       <button class="btn btn-acc btn-xl" onclick="doSetup()">Criar Conta</button>
       <p style="text-align:center;margin-top:.85rem"><span class="lnk" onclick="showLoginForm()">← Voltar ao login</span></p>
     </div>
@@ -295,7 +321,7 @@ tr:hover td{background:#f8fafc}
         <p id="vl-store-name">Acesso à Lista</p>
       </div>
       <div id="vl-alert" class="alert al-err hidden"></div>
-      <div class="fg"><label class="fl">Senha da lista</label><input id="vl-pass" class="fc" type="password" placeholder="Senha da lista" onkeydown="if(event.key==='Enter')doVendorLogin()"></div>
+      <div class="fg"><label class="fl">Senha da lista</label><div class="pw-wrap"><input id="vl-pass" class="fc" type="password" placeholder="Senha da lista" onkeydown="if(event.key==='Enter')doVendorLogin()"><button type="button" class="pw-eye" onclick="togglePW('vl-pass')" title="Mostrar/ocultar">👁</button></div></div>
       <button class="btn btn-acc btn-xl" onclick="doVendorLogin()">🚀 Abrir a Fila</button>
     </div>
   </div>
@@ -537,13 +563,13 @@ tr:hover td{background:#f8fafc}
           <div style="font-weight:700;font-size:.95rem;color:var(--pri);margin-bottom:1.1rem">🏪 Dados da Loja</div>
           <div class="fg"><label class="fl">Nome da Loja</label><input id="cfg-store" class="fc" placeholder="Nome da loja"></div>
           <div class="fg"><label class="fl">Meta Mensal (R$)</label><input id="cfg-goal" class="fc" type="number" min="0" step="100" placeholder="0"></div>
-          <div class="fg"><label class="fl">Senha da Lista (vendedores)</label><input id="cfg-lpass" class="fc" placeholder="Senha de acesso dos vendedores"></div>
+          <div class="fg"><label class="fl">Senha da Lista (vendedores)</label><div class="pw-wrap"><input id="cfg-lpass" class="fc" placeholder="Senha de acesso dos vendedores"><button type="button" class="pw-eye" onclick="togglePW('cfg-lpass')" title="Mostrar/ocultar">👁</button></div></div>
           <button class="btn btn-acc" onclick="saveCfgStore()">Salvar Dados</button>
         </div>
         <div class="card">
           <div style="font-weight:700;font-size:.95rem;color:var(--pri);margin-bottom:1.1rem">🔒 Senha do Gerente</div>
-          <div class="fg"><label class="fl">Nova Senha</label><input id="cfg-newpass" class="fc" type="password" placeholder="Nova senha"></div>
-          <div class="fg"><label class="fl">Confirmar Senha</label><input id="cfg-confpass" class="fc" type="password" placeholder="Repita a senha"></div>
+          <div class="fg"><label class="fl">Nova Senha</label><div class="pw-wrap"><input id="cfg-newpass" class="fc" type="password" placeholder="Nova senha"><button type="button" class="pw-eye" onclick="togglePW('cfg-newpass')" title="Mostrar/ocultar">👁</button></div></div>
+          <div class="fg"><label class="fl">Confirmar Senha</label><div class="pw-wrap"><input id="cfg-confpass" class="fc" type="password" placeholder="Repita a senha"><button type="button" class="pw-eye" onclick="togglePW('cfg-confpass')" title="Mostrar/ocultar">👁</button></div></div>
           <div id="cfg-pass-alert" class="alert al-err hidden"></div>
           <button class="btn btn-pri" onclick="saveCfgPass()">Alterar Senha</button>
         </div>
@@ -715,9 +741,12 @@ const DB = {
   save(d) {
     this._cache = d;
     localStorage.setItem(this.KEY, JSON.stringify(d));
-    // Async upsert to Supabase (fire-and-forget with error log)
-    _sb.from('estado').upsert({ chave: this.KEY, valor: d, updated_at: new Date().toISOString() })
-      .then(({ error }) => { if (error) console.warn('Supabase save:', error.message); });
+    // Async upsert to Supabase (fire-and-forget com erro visível)
+    _sb.from('estado')
+      .upsert({ chave: this.KEY, valor: d, updated_at: new Date().toISOString() }, { onConflict: 'chave' })
+      .then(({ error }) => {
+        if (error) showToast('⚠️ Erro ao sincronizar com servidor: ' + error.message, 'err');
+      });
   },
 
   async loadFromSupabase() {
@@ -806,36 +835,89 @@ function getElapsed(iso) {
 // MANAGER AUTH
 // ============================================================
 function showSetup() {
-  document.getElementById('ml-form-login').classList.add('hidden');
+  ['ml-form-login','ml-form-forgot','ml-form-newpass'].forEach(id=>document.getElementById(id).classList.add('hidden'));
   document.getElementById('ml-form-setup').classList.remove('hidden');
   document.getElementById('ml-subtitle').textContent = 'Primeiro Acesso';
   hideAlert('ml-alert');
 }
 function showLoginForm() {
+  ['ml-form-setup','ml-form-forgot','ml-form-newpass'].forEach(id=>document.getElementById(id).classList.add('hidden'));
   document.getElementById('ml-form-login').classList.remove('hidden');
-  document.getElementById('ml-form-setup').classList.add('hidden');
   document.getElementById('ml-subtitle').textContent = 'Painel do Gerente';
   hideAlert('ml-alert');
 }
-function doSetup() {
+function showForgotPass() {
+  ['ml-form-login','ml-form-setup','ml-form-newpass'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  document.getElementById('ml-form-forgot').classList.remove('hidden');
+  document.getElementById('ml-subtitle').textContent = 'Esqueci minha senha';
+  hideAlert('ml-alert');
+}
+function showChangePassForm(reason) {
+  ['ml-form-login','ml-form-setup','ml-form-forgot'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  document.getElementById('ml-form-newpass').classList.remove('hidden');
+  document.getElementById('ml-subtitle').textContent = reason === 'provisoria' ? 'Troca de Senha Obrigatória' : 'Nova Senha';
+  hideAlert('ml-alert');
+}
+async function doForgotPass() {
+  const email=val('fp-email');
+  if (!email) return showAlert('ml-alert','Digite seu email.');
+  const redirectTo = window.location.origin + window.location.pathname;
+  const { error } = await _sb.auth.resetPasswordForEmail(email, { redirectTo });
+  if (error) return showAlert('ml-alert','Erro: ' + error.message);
+  const el = document.getElementById('ml-alert');
+  el.textContent = '✅ Link enviado! Verifique seu email (cheque a caixa de spam também).';
+  el.className = 'alert al-ok'; el.classList.remove('hidden');
+}
+async function doChangePass() {
+  const np=val('np-pass'), cp=val('np-conf');
+  if (!np) return showAlert('ml-alert','Digite a nova senha.');
+  if (np.length<4) return showAlert('ml-alert','Senha deve ter ao menos 4 caracteres.');
+  if (np!==cp) return showAlert('ml-alert','As senhas não conferem.');
+  // Atualizar no Supabase Auth
+  const { error } = await _sb.auth.updateUser({ password: np });
+  if (error) console.warn('Supabase updateUser:', error.message);
+  // Atualizar no estado local (backward compat)
+  const d=DB.get(); d.manager.password=np; d.manager.senhaProvisoria=false;
+  DB.save(d); enterManagerApp(d);
+}
+async function doSetup() {
   const store=val('su-store'), name=val('su-name'), email=val('su-email').toLowerCase(), pass=val('su-pass'), lpass=val('su-lpass');
   if (!store||!name||!email||!pass||!lpass) return showAlert('ml-alert','Preencha todos os campos.');
   if (pass.length<4) return showAlert('ml-alert','Senha deve ter pelo menos 4 caracteres.');
-  const d=DB.get(); d.manager={email,password:pass,name}; d.store={name:store,goal:d.store.goal||0,listPassword:lpass};
-  DB.save(d); enterManagerApp(d);
-}
-function doManagerLogin() {
-  const email=val('ml-email').toLowerCase(), pass=val('ml-pass');
   const d=DB.get();
-  if (email!==d.manager.email||pass!==d.manager.password) return showAlert('ml-alert','Email ou senha incorretos.');
+  d.manager={email,password:pass,name,senhaProvisoria:false};
+  d.store={name:store,goal:d.store?.goal||0,listPassword:lpass};
+  DB.save(d);
+  // Criar conta no Supabase Auth (habilita "Esqueci minha senha")
+  const { error: signUpErr } = await _sb.auth.signUp({ email, password: pass });
+  if (signUpErr && signUpErr.message !== 'User already registered') {
+    console.warn('Supabase signUp:', signUpErr.message);
+  }
   enterManagerApp(d);
+}
+async function doManagerLogin() {
+  const email=val('ml-email').toLowerCase(), pass=val('ml-pass');
+  if (!email||!pass) return showAlert('ml-alert','Preencha email e senha.');
+  const d=DB.get();
+  // Tentar Supabase Auth primeiro
+  const { error: authErr } = await _sb.auth.signInWithPassword({ email, password: pass });
+  if (!authErr) {
+    if (d.manager?.senhaProvisoria) { showChangePassForm('provisoria'); return; }
+    enterManagerApp(d); return;
+  }
+  // Fallback: autenticação JSON (backward compat)
+  if (d.manager && email===d.manager.email && pass===d.manager.password) {
+    if (d.manager.senhaProvisoria) { showChangePassForm('provisoria'); return; }
+    enterManagerApp(d); return;
+  }
+  showAlert('ml-alert','Email ou senha incorretos.');
 }
 function enterManagerApp(d) {
   document.getElementById('nav-name').textContent = d.manager.name;
   document.getElementById('nav-store').textContent = d.store.name;
   showView('mgr-app'); showMgrSection('dashboard');
 }
-function managerLogout() { showView('home'); }
+function managerLogout() { _sb.auth.signOut().catch(()=>{}); showView('home'); }
 
 // ============================================================
 // VENDOR AUTH
@@ -1330,7 +1412,20 @@ function exportReport(){const atts=getFilteredAtts();if(!atts.length){showToast(
 function renderConfig(){const d=DB.get();document.getElementById('cfg-store').value=d.store.name;document.getElementById('cfg-goal').value=d.store.goal||'';document.getElementById('cfg-lpass').value=d.store.listPassword;renderReasonsList(d);}
 function renderReasonsList(d){const el=document.getElementById('cfg-reasons-list');el.innerHTML=d.reasons.map(r=>`<div class="rs-item"><span class="rs-txt">${r.label}</span><button class="btn btn-out btn-sm" style="color:var(--err);border-color:var(--err)" onclick="deleteReason(${r.id})">Excluir</button></div>`).join('')||'<p style="color:var(--muted);font-size:.85rem;margin-bottom:.5rem">Nenhum motivo cadastrado.</p>';}
 function saveCfgStore(){const name=val('cfg-store').trim(),goal=parseFloat(val('cfg-goal'))||0,lpass=val('cfg-lpass').trim();if(!name){showToast('Digite o nome da loja.','err');return;}if(!lpass){showToast('A senha da lista não pode ficar em branco.','err');return;}const d=DB.get();d.store.name=name;d.store.goal=goal;d.store.listPassword=lpass;DB.save(d);document.getElementById('nav-store').textContent=name;showToast('Dados da loja salvos!');}
-function saveCfgPass(){const np=val('cfg-newpass'),cp=val('cfg-confpass');if(!np)return showAlert('cfg-pass-alert','Digite a nova senha.');if(np.length<4)return showAlert('cfg-pass-alert','Senha deve ter ao menos 4 caracteres.');if(np!==cp)return showAlert('cfg-pass-alert','As senhas não conferem.');const d=DB.get();d.manager.password=np;DB.save(d);document.getElementById('cfg-newpass').value='';document.getElementById('cfg-confpass').value='';hideAlert('cfg-pass-alert');showToast('Senha do gerente alterada!');}
+async function saveCfgPass(){
+  const np=val('cfg-newpass'),cp=val('cfg-confpass');
+  if(!np)return showAlert('cfg-pass-alert','Digite a nova senha.');
+  if(np.length<4)return showAlert('cfg-pass-alert','Senha deve ter ao menos 4 caracteres.');
+  if(np!==cp)return showAlert('cfg-pass-alert','As senhas não conferem.');
+  // Atualizar no Supabase Auth
+  const {error}=await _sb.auth.updateUser({password:np});
+  if(error) console.warn('Supabase updateUser:',error.message);
+  // Atualizar no estado local
+  const d=DB.get();d.manager.password=np;d.manager.senhaProvisoria=false;
+  DB.save(d);
+  document.getElementById('cfg-newpass').value='';document.getElementById('cfg-confpass').value='';
+  hideAlert('cfg-pass-alert');showToast('Senha do gerente alterada!');
+}
 function addReason(){const txt=val('cfg-new-reason').trim();if(!txt)return;const d=DB.get();const maxId=d.reasons.reduce((m,r)=>Math.max(m,r.id),0);d.reasons.push({id:maxId+1,label:txt});DB.save(d);document.getElementById('cfg-new-reason').value='';renderReasonsList(d);}
 function deleteReason(id){const d=DB.get();d.reasons=d.reasons.filter(r=>r.id!==id);DB.save(d);renderReasonsList(d);}
 
@@ -1350,6 +1445,13 @@ function fmtDate(d){if(!d)return '—';const[y,m,day]=d.split('-');return`${day}
 function fmtDt(iso){try{const d=new Date(iso);return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}catch{return iso;}}
 function downloadCSV(content,filename){const blob=new Blob([content],{type:'text/csv;charset=utf-8;'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;a.click();URL.revokeObjectURL(url);}
 
+// Toggle mostrar/ocultar senha
+function togglePW(id){
+  const inp=document.getElementById(id);
+  if(!inp) return;
+  inp.type = inp.type==='password' ? 'text' : 'password';
+}
+
 // Toast notification (substitui alert())
 function showToast(msg,type='ok',duration=3200){
   let cont=document.getElementById('_toast_cont');
@@ -1363,6 +1465,14 @@ window.addEventListener('load', async ()=>{
   showView('home');
   const alDate=document.getElementById('al-date');
   if(alDate) alDate.min=today();
+
+  // Listener para redefinição de senha via email (PASSWORD_RECOVERY)
+  _sb.auth.onAuthStateChange((event) => {
+    if (event === 'PASSWORD_RECOVERY') {
+      showView('mgr-login');
+      showChangePassForm('recovery');
+    }
+  });
 
   // Carregar dados do Supabase e sincronizar em tempo real
   await DB.loadFromSupabase();
